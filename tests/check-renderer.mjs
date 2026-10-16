@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 import {spawnSync} from 'node:child_process';
 
 // Run the actual renderer with real GSettings/Gio and a memory settings backend.
@@ -38,6 +38,8 @@ GLib.source_remove = id => {
     return true;
 };
 
+const rotation = new WallpaperRotation(extSettings);
+rotation.start();
 const dir = Gio.File.new_for_path(ARGV[0]);
 const files = dir.enumerate_children('standard::name,standard::content-type', Gio.FileQueryInfoFlags.NONE, null);
 const videos = [];
@@ -102,11 +104,14 @@ for (const minutes of [1, 3, 10]) {
 const temporary = GLib.dir_make_tmp('hanabi-interval-check-XXXXXX');
 try {
     extSettings.set_string('change-wallpaper-directory-path', temporary);
-    check(timers.size === 0, 'empty directory must cancel the old timer');
+    check(timers.size === 1, 'empty directory must keep a retry timer');
+    const beforeEmpty = current();
+    tick();
+    check(current() === beforeEmpty, 'empty directory must leave the current wallpaper unchanged');
     extSettings.set_string('change-wallpaper-directory-path', ARGV[0]);
     check(timers.size === 1, 'restoring a valid directory must recreate the timer');
     extSettings.set_string('change-wallpaper-directory-path', temporary + '/missing');
-    check(timers.size === 0, 'invalid directory must cancel the old timer');
+    check(timers.size === 1, 'invalid directory must keep a retry timer');
     extSettings.set_boolean('change-wallpaper', false);
     check(timers.size === 0, 'disabling with an invalid directory must leave no stale timer');
     extSettings.set_string('change-wallpaper-directory-path', ARGV[0]);
@@ -117,7 +122,8 @@ try {
 } finally {
     Gio.File.new_for_path(temporary).delete(null);
 }
-print('PASS: interval updates, empty/missing directories, disable and reenable');
+rotation.stop();
+print('PASS: shell rotation handles interval updates, empty/missing directories, disable and reenable');
 
 renderer.setPlay();
 renderer.playing = false; // Backend state signals can lag behind the request.
@@ -182,7 +188,8 @@ try {
     cpSync(join(root, 'tests/fixtures/original.gschema.xml'), join(temporary, 'old-schemas/original.gschema.xml'));
     const compile = spawnSync('glib-compile-schemas', [join(temporary, 'old-schemas')]);
     assert.equal(compile.status, 0);
-    writeFileSync(script, source.slice(0, -'renderer.run(ARGV);\n'.length) + checks);
+    const rotationImport = `import {WallpaperRotation} from ${JSON.stringify(pathToFileURL(join(root, 'src/_build/wallpaperRotation.js')).href)};\n`;
+    writeFileSync(script, rotationImport + source.slice(0, -'renderer.run(ARGV);\n'.length) + checks);
     const result = spawnSync('gjs', ['-m', script, videoDirectory, join(temporary, 'old-schemas')], {
         env: {...process.env, GSETTINGS_BACKEND: 'memory', GIO_USE_VFS: 'local', XDG_DATA_DIRS: join(temporary, 'empty-data'), XDG_DATA_HOME: join(temporary, 'empty-data')},
         encoding: 'utf8',

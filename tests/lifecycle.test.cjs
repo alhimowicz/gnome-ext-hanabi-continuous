@@ -79,6 +79,8 @@ function harness(startingUp = false) {
         './waylandSubprocess.js': {WaylandSubprocess: Component},
         './windowManager.js': {WindowManager: Component},
         './playbackState.js': {PlaybackState: Component},
+        './wallpaperRotation.js': {WallpaperRotation: class {start() {} stop() {}}},
+        './rendererWatchdog.js': {RendererWatchdog: class {start() {} stop() {}}},
         './autoPause.js': {AutoPause: Component},
         './panelMenu.js': {HanabiPanelMenu: Component},
         './settings.js': {migrateSettings() {}},
@@ -179,7 +181,7 @@ function harness(startingUp = false) {
     const killed = [];
     h.gio.FileQueryInfoFlags = {NONE: 0};
     h.gio.Subprocess = class {
-        constructor({argv}) { killed.push(argv[1]); }
+        constructor({argv}) { assert.equal(argv[1], '-KILL'); killed.push(argv[2]); }
         init() {}
         wait() {}
     };

@@ -29,7 +29,7 @@ const spdxBanner = '// SPDX-License-Identifier: GPL-3.0-or-later';
 
 // Extension and prefs (loaded by GNOME Shell as ESM modules)
 await esbuild.build({
-    entryPoints: ['src/extension.ts', 'src/prefs.ts'],
+    entryPoints: ['src/extension.ts', 'src/prefs.ts', 'src/wallpaperRotation.ts'],
     outdir: 'src/_build',
     bundle: true,
     treeShaking: false,

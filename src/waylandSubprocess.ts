@@ -34,6 +34,7 @@ export class WaylandSubprocess {
     private launcher: Gio.SubprocessLauncher | null;
     private waylandClient: Meta.WaylandClient | null = null;
     private dataInputStream: Gio.DataInputStream | null = null;
+    private terminateTimerId = 0;
 
     constructor(flags: Gio.SubprocessFlags = Gio.SubprocessFlags.NONE) {
         this.flags =
@@ -41,6 +42,10 @@ export class WaylandSubprocess {
             Gio.SubprocessFlags.STDOUT_PIPE |
             Gio.SubprocessFlags.STDERR_MERGE;
         this.launcher = new Gio.SubprocessLauncher({flags: this.flags});
+        // GTK's Vulkan/DMA-BUF path can wait indefinitely on a GPU fence.
+        // Keep this workaround confined to the wallpaper process.
+        this.launcher.setenv('GSK_RENDERER', 'gl', true);
+        this.launcher.setenv('GDK_DISABLE', `${GLib.getenv('GDK_DISABLE') ?? ''}:vulkan:dmabuf`, true);
     }
 
     spawn(argv: string[]): Gio.Subprocess | null {
@@ -60,8 +65,14 @@ export class WaylandSubprocess {
                 this.subprocess.get_stdout_pipe()!
             );
             this.readOutput();
-            this.subprocess.wait_async(this.cancellable, () => {
+            this.subprocess.wait_async(null, (process, result) => {
+                process!.wait_finish(result);
                 this.running = false;
+                if (this.terminateTimerId) {
+                    GLib.source_remove(this.terminateTimerId);
+                    this.terminateTimerId = 0;
+                }
+                this.cancellable?.cancel();
                 this.dataInputStream = null;
                 this.cancellable = null!;
             });
@@ -72,6 +83,18 @@ export class WaylandSubprocess {
 
     setCwd(cwd: string): void {
         this.launcher?.set_cwd(cwd);
+    }
+
+    terminate(): void {
+        if (!this.running || !this.subprocess || this.terminateTimerId)
+            return;
+        this.subprocess.send_signal(15);
+        this.terminateTimerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+            this.terminateTimerId = 0;
+            if (this.running)
+                this.subprocess?.force_exit();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     readOutput(): void {

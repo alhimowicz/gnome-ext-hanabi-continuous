@@ -28,6 +28,8 @@ import {AutoPause} from './autoPause.js';
 import {migrateSettings} from './settings.js';
 import {HanabiPanelMenu} from './panelMenu.js';
 import {Logger} from './logger.js';
+import {WallpaperRotation} from './wallpaperRotation.js';
+import {RendererWatchdog} from './rendererWatchdog.js';
 
 const logger = new Logger('extension');
 
@@ -50,6 +52,8 @@ export default class HanabiExtension extends Extension {
     private shellOverride: GnomeShellOverride | null = null;
     private windowManager: WindowManager | null = null;
     private autoPause: AutoPause | null = null;
+    private rotation: WallpaperRotation | null = null;
+    private watchdog: RendererWatchdog | null = null;
 
     // Renderer subprocess and its relaunch timeout.
     private currentProcess: WaylandSubprocess | null = null;
@@ -94,6 +98,8 @@ export default class HanabiExtension extends Extension {
         this.shellOverride = new GnomeShellOverride(this.settings);
         this.windowManager = new WindowManager();
         this.autoPause = new AutoPause(this);
+        this.rotation = new WallpaperRotation(this.settings);
+        this.watchdog = new RendererWatchdog(() => this.currentProcess, () => this.killCurrentProcess());
 
         // GNOME rebases extension overrides in enable/disable order when
         // entering the lock screen. Install ours before enable() returns;
@@ -147,6 +153,8 @@ export default class HanabiExtension extends Extension {
         this.shellOverride!.enable();
         this.windowManager!.enable();
         this.autoPause!.enable();
+        this.rotation!.start();
+        this.watchdog!.start();
 
         const videoChangedId = this.settings.connect(
             'changed::video-path', () => this.syncStaticBackground()
@@ -215,8 +223,7 @@ export default class HanabiExtension extends Extension {
             GLib.source_remove(this.launchRendererTimeoutId);
             this.launchRendererTimeoutId = 0;
         }
-        if (this.currentProcess?.subprocess)
-            this.currentProcess.subprocess.send_signal(15);
+        this.currentProcess?.terminate();
     }
 
     private resumeRenderer(): void {
@@ -229,7 +236,7 @@ export default class HanabiExtension extends Extension {
     }
 
     private launchRenderer(): void {
-        if (!this.settings || !this.isEnabled || this.rendererSuspended)
+        if (!this.settings || !this.isEnabled || this.rendererSuspended || this.currentProcess)
             return;
 
         const videoPath = this.settings.get_string('video-path');
@@ -287,6 +294,8 @@ export default class HanabiExtension extends Extension {
         logger.debug('Disabling');
 
         this.isEnabled = false;
+        this.rotation?.stop();
+        this.watchdog?.stop();
         if (this.startupTimeoutId) {
             GLib.source_remove(this.startupTimeoutId);
             this.startupTimeoutId = 0;
@@ -328,8 +337,7 @@ export default class HanabiExtension extends Extension {
 
         if (this.currentProcess?.subprocess) {
             logger.debug('Killing current renderer process');
-            this.currentProcess.cancellable?.cancel();
-            this.currentProcess.subprocess.send_signal(15);
+            this.currentProcess.terminate();
         }
     }
 
@@ -369,7 +377,7 @@ export default class HanabiExtension extends Extension {
             const script = argv[1] === '-m' ? argv[2] : argv[1];
             if (GLib.path_get_basename(argv[0]) === 'gjs' && script === path) {
                 logger.debug(`Killing orphaned renderer process (pid ${filename})`);
-                const proc = new Gio.Subprocess({argv: ['/bin/kill', filename]});
+                const proc = new Gio.Subprocess({argv: ['/bin/kill', '-KILL', filename]});
                 proc.init(null);
                 proc.wait(null);
             }

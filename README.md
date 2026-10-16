@@ -9,6 +9,11 @@ hooks accumulating during lock-screen rebases. Video changes preserve the chosen
 playback state, and matching still images keep the panel and lock-screen fallback
 in sync. Automatic pausing is disabled by default.
 
+Rotation runs in GNOME Shell, independently of the video process. The player uses
+OpenGL with Vulkan and DMA-BUF disabled to avoid GPU-fence hangs seen with GTK on
+AMD. A health check restarts an unresponsive player, with forced termination after
+a short grace period so a frozen process cannot block its replacement.
+
 It installs separately from Hanabi, so upstream Hanabi updates cannot overwrite it.
 
 | Component | Identity |
@@ -68,7 +73,8 @@ the new code.
 The regression checks cover repeated enable/disable and startup cancellation,
 unfiltered renderer discovery, interval changes, paused rotation, sequential and
 random selection, both playback backends, bundled schema loading, and settings
-migration. GJS checks use temporary fixtures and the in-memory settings backend;
+migration, renderer timeouts, stale health-check responses, and forced process
+termination. GJS checks use temporary fixtures and the in-memory settings backend;
 they do not change desktop settings. The small WebM fixture is generated from
 GStreamer's `videotestsrc` ball pattern.
 

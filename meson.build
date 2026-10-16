@@ -1,6 +1,6 @@
 project(
   'hanabi-extension',
-  version: '1',
+  version: '2',
   license: 'GPL-3.0-or-later',
   meson_version: '>= 0.56.0'
 )

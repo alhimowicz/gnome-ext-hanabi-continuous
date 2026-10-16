@@ -82,14 +82,9 @@ let nohide = false;
 let videoPath = extSettings?.get_string('video-path') ?? '';
 let volume = (extSettings?.get_int('volume') ?? 50) / 100.0;
 let randomStartPosition = extSettings?.get_boolean('random-start-position') ?? false;
-let changeWallpaper = extSettings?.get_boolean('change-wallpaper') ?? true;
-let changeWallpaperDirectoryPath = extSettings?.get_string('change-wallpaper-directory-path') ?? '';
-let changeWallpaperMode = extSettings?.get_int('change-wallpaper-mode') ?? 0;
-let changeWallpaperInterval = extSettings?.get_int('change-wallpaper-interval') ?? 15;
 let windowDimension = {width: 1920, height: 1080};
 let windowed = false;
 let isDebugMode = extSettings?.get_boolean('debug-mode') ?? true;
-let changeWallpaperTimerId: number | null = null;
 
 const HanabiRendererWindow = GObject.registerClass(
     {GTypeName: 'HanabiContinuousRendererWindow'},
@@ -203,21 +198,6 @@ const HanabiRenderer = GObject.registerClass(
                     break;
                 case 'random-start-position':
                     randomStartPosition = settings.get_boolean(key);
-                    break;
-                case 'change-wallpaper':
-                    changeWallpaper = settings.get_boolean(key);
-                    this.setAutoWallpaper();
-                    break;
-                case 'change-wallpaper-interval':
-                    changeWallpaperInterval = settings.get_int(key);
-                    this.setAutoWallpaper();
-                    break;
-                case 'change-wallpaper-directory-path':
-                    changeWallpaperDirectoryPath = settings.get_string(key);
-                    this.setAutoWallpaper();
-                    break;
-                case 'change-wallpaper-mode':
-                    changeWallpaperMode = settings.get_int(key);
                     break;
                 case 'content-fit':
                     contentFit = settings.get_int(key);
@@ -491,7 +471,6 @@ const HanabiRenderer = GObject.registerClass(
 
             this.markRandomStartPending();
             this.setPlay();
-            this.setAutoWallpaper();
 
             return widget;
         }
@@ -521,7 +500,6 @@ const HanabiRenderer = GObject.registerClass(
 
             this.markRandomStartPending();
             this.setPlay();
-            this.setAutoWallpaper();
 
             return widget;
         }
@@ -608,72 +586,6 @@ const HanabiRenderer = GObject.registerClass(
                 this.play.pause();
             else if (this.media)
                 this.media.pause();
-        }
-
-        setAutoWallpaper(): void {
-            if (changeWallpaperTimerId) {
-                GLib.source_remove(changeWallpaperTimerId);
-                changeWallpaperTimerId = null;
-            }
-            const settings = extSettings;
-            if (!changeWallpaper || !settings)
-                return;
-
-            const videoPaths: string[] = [];
-            const dir = Gio.File.new_for_path(changeWallpaperDirectoryPath);
-
-            if (dir.query_file_type(Gio.FileQueryInfoFlags.NONE, null) !== Gio.FileType.DIRECTORY)
-                return;
-
-            try {
-                const enumerator = dir.enumerate_children(
-                    'standard::name,standard::content-type',
-                    Gio.FileQueryInfoFlags.NONE,
-                    null
-                );
-                try {
-                    let fileInfo: Gio.FileInfo | null;
-                    while ((fileInfo = enumerator.next_file(null))) {
-                        if (fileInfo.get_content_type()?.startsWith('video/')) {
-                            const path = dir.get_child(fileInfo.get_name()).get_path();
-                            if (path)
-                                videoPaths.push(path);
-                        }
-                    }
-                } finally {
-                    enumerator.close(null);
-                }
-            } catch (error) {
-                console.warn(`Unable to read wallpaper directory: ${error}`);
-                return;
-            }
-            if (videoPaths.length === 0)
-                return;
-            videoPaths.sort();
-
-            const operation = (): boolean => {
-                console.debug(`setAutoWallpaper operation, interval: ${changeWallpaperInterval} min`);
-                const currentIndex = videoPaths.indexOf(settings.get_string('video-path'));
-                let nextIndex = 0;
-                if (changeWallpaperMode === 2) {
-                    // Choose uniformly from the other videos, even after a manual change.
-                    nextIndex = currentIndex < 0
-                        ? Math.floor(Math.random() * videoPaths.length)
-                        : (currentIndex + 1 + Math.floor(Math.random() * (videoPaths.length - 1))) % videoPaths.length;
-                } else if (currentIndex >= 0) {
-                    const step = changeWallpaperMode === 1 ? videoPaths.length - 1 : 1;
-                    nextIndex = (currentIndex + step) % videoPaths.length;
-                }
-                // Rotation follows elapsed time even while playback is auto-paused.
-                settings.set_string('video-path', videoPaths[nextIndex]);
-                return GLib.SOURCE_CONTINUE;
-            };
-
-            changeWallpaperTimerId = GLib.timeout_add_seconds(
-                GLib.PRIORITY_DEFAULT,
-                changeWallpaperInterval * 60,
-                operation
-            );
         }
 
         get isPlaying(): boolean {
