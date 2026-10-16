@@ -18,7 +18,7 @@
 // The renderer's application id, D-Bus bus name, and D-Bus interface name.
 // The extension matches renderer windows by checking the window title against
 // this value, so the renderer and extension sides must use the exact same id.
-export const APPLICATION_ID = 'io.github.jeffshee.HanabiRenderer';
+export const APPLICATION_ID = 'io.github.alhimowicz.HanabiContinuousRenderer';
 
 // The renderer's D-Bus object path, derived from APPLICATION_ID.
 export const RENDERER_OBJECT_PATH = `/${APPLICATION_ID.replaceAll('.', '/')}`;

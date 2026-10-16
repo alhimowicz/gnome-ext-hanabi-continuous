@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Package managers set this so we don't need to run
-if [ -z "$DESTDIR" ]; then
-  echo Compiling GSettings schemas...
-  glib-compile-schemas "${MESON_INSTALL_PREFIX}/share/glib-2.0/schemas"
-fi
+set -eu
+# Keep the fork's schema inside its own extension directory, including in zips.
+glib-compile-schemas --strict "${DESTDIR:-}${1}"

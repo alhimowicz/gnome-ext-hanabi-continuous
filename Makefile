@@ -1,6 +1,6 @@
-UUID    := hanabi-extension@jeffshee.github.io
+UUID    := hanabi-continuous@alhimowicz.github.io
 POT_DIR := src/po
-POT_FILE := $(POT_DIR)/$(UUID).pot
+POT_FILE := $(POT_DIR)/hanabi-extension@jeffshee.github.io.pot
 
 .PHONY: build typecheck install clean enable disable prefs reset uninstall renderer log lint lint-fix pot merge-po help
 
@@ -33,8 +33,6 @@ typecheck: node_modules
 	npm run typecheck
 
 install: build
-	rm -rf .build
-	rm -rf $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 	meson setup .build --prefix=$(HOME)/.local/ && ninja -C .build install
 
 clean:

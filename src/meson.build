@@ -1,6 +1,7 @@
 metaconf = configuration_data()
 metaconf.set('settings_schema', schema)
 metaconf.set('uuid', uuid)
+metaconf.set('translation_domain', translation_domain)
 metaconf.set('version', meson.project_version())
 
 configure_file(
@@ -40,4 +41,4 @@ install_data('schemas/@0@.gschema.xml'.format(schema),
 
 subdir('po')
 
-meson.add_install_script(meson.project_source_root() / 'build-aux' / 'meson-postinstall.sh')
+meson.add_install_script(meson.project_source_root() / 'build-aux' / 'meson-postinstall.sh', schema_dir)

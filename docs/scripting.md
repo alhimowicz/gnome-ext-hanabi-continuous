@@ -10,7 +10,7 @@ You can modify all Hanabi extension settings through the `gsettings` command.
 For example, to change the video path, use the following command:
 
 ```bash
-gsettings set io.github.jeffshee.hanabi-extension video-path '<video_path>'
+gsettings set io.github.alhimowicz.hanabi-continuous video-path '<video_path>'
 ```
 
 Replace `<video_path>` with the path to the video file you want to set as your wallpaper.
@@ -24,13 +24,13 @@ Here's how to do it:
 - Sunrise
 
 ```bash
-gsettings set io.github.jeffshee.hanabi-extension video-path '<light_theme_video_path>'
+gsettings set io.github.alhimowicz.hanabi-continuous video-path '<light_theme_video_path>'
 ```
 
 - Sunset
 
 ```bash
-gsettings set io.github.jeffshee.hanabi-extension video-path '<dark_theme_video_path>'
+gsettings set io.github.alhimowicz.hanabi-continuous video-path '<dark_theme_video_path>'
 ```
 
 ![](images/night-theme-switcher-run-commands.png)
@@ -68,7 +68,7 @@ while True:
 
     if video_paths:
         video_path = random.choice(video_paths)
-        gsettings_command = f"gsettings set io.github.jeffshee.hanabi-extension video-path '{video_path}'"
+        gsettings_command = f"gsettings set io.github.alhimowicz.hanabi-continuous video-path '{video_path}'"
         print(f"Video path: {video_path}")
         subprocess.run(["bash", "-c", gsettings_command])
 

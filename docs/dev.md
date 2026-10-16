@@ -41,7 +41,7 @@ git push origin :refs/tags/v1.0.0    # remote
 Install the published zip with:
 
 ```bash
-gnome-extensions install hanabi-extension@jeffshee.github.io.shell-extension.zip
+gnome-extensions install hanabi-continuous@alhimowicz.github.io.shell-extension.zip
 ```
 
 ## License Headers

@@ -33,3 +33,6 @@ scratch
 
 # TypeScript build output
 src/_build
+.build-*/
+dist/
+*.compiled

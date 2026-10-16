@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="io.github.jeffshee.hanabi-extension" path="/io/github/jeffshee/hanabi-extension/">
+    <key name="mute" type="b"><default>false</default></key>
+    <key name="volume" type="i"><default>50</default></key>
+    <key name="change-wallpaper-interval" type="i"><default>15</default></key>
+  </schema>
+</schemalist>

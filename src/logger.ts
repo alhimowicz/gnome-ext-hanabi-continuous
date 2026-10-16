@@ -16,9 +16,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Gio from 'gi://Gio';
+import {loadSettings} from './settings.js';
 
-const schemaId = 'io.github.jeffshee.hanabi-extension';
-const logPrefix = 'Hanabi:';
+const logPrefix = 'Hanabi Continuous:';
 
 export class Logger {
     private settings?: Gio.Settings;
@@ -26,9 +26,7 @@ export class Logger {
     isDebugMode: boolean;
 
     constructor(opt?: string) {
-        const settingsSchemaSource = Gio.SettingsSchemaSource.get_default();
-        if (settingsSchemaSource?.lookup(schemaId, false))
-            this.settings = Gio.Settings.new(schemaId);
+        this.settings = loadSettings() ?? undefined;
 
         this.logOpt = opt;
         this.isDebugMode = this.settings

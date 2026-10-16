@@ -22,6 +22,8 @@
 // output only contains gi:// and resource:// references — no Node.js paths.
 
 import * as esbuild from 'esbuild';
+import {mkdirSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 
 const spdxBanner = '// SPDX-License-Identifier: GPL-3.0-or-later';
 
@@ -42,6 +44,10 @@ await esbuild.build({
     banner: {js: spdxBanner},
     logLevel: 'info',
 });
+
+// Development and tests use the same local schemas as the installable package.
+mkdirSync('src/_build/schemas', {recursive: true});
+execFileSync('glib-compile-schemas', ['--strict', '--targetdir=src/_build/schemas', 'src/schemas']);
 
 // Renderer (standalone GJS ESM script launched as a subprocess)
 await esbuild.build({

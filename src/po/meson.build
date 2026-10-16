@@ -1,5 +1,5 @@
 i18n.gettext(
-	uuid,
+	translation_domain,
 	args: [
 		'--sort-by-file',
 		'--from-code=UTF-8'

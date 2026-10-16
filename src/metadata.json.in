@@ -1,13 +1,13 @@
 {
-  "description": "Live Wallpaper for GNOME\n\nHanabi 花火【はなび】(n) fireworks\n( ・ω・)o─━・*:'・:・゜'・:※",
-  "gettext-domain": "@uuid@",
-  "name": "Hanabi Extension",
+  "description": "Continuous animated wallpapers for GNOME 50. A Hanabi fork with reliable rotation, renderer discovery, and extension lifecycle fixes.",
+  "gettext-domain": "@translation_domain@",
+  "name": "Hanabi Continuous",
   "settings-schema": "@settings_schema@",
   "session-modes": ["user", "unlock-dialog"],
   "shell-version": [
     "50"
   ],
-  "url": "https://github.com/jeffshee/gnome-ext-hanabi",
+  "url": "https://github.com/alhimowicz/gnome-ext-hanabi-continuous",
   "uuid": "@uuid@",
   "version": @version@
 }

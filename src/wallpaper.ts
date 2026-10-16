@@ -36,6 +36,7 @@ const BACKGROUND_FADE_ANIMATION_TIME = 1000;
 const RENDERER_POLL_INTERVAL_MS = 1000;
 
 export const LiveWallpaper = GObject.registerClass(
+    {GTypeName: 'HanabiContinuousLiveWallpaper'},
     class LiveWallpaper extends St.Widget {
         // Background actor we sit on, and values derived from it.
         private backgroundActor: Meta.BackgroundActor;

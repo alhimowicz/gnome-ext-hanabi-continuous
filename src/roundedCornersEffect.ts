@@ -145,6 +145,7 @@ function getFboOffset(actor: Clutter.Actor): [number, number] {
 }
 
 export const RoundedCornersEffect = GObject.registerClass(
+    {GTypeName: 'HanabiContinuousRoundedCornersEffect'},
     class RoundedCornersEffect extends Shell.GLSLEffect {
         // Pending debounced log timers, keyed by label.
         private logTimeouts = new Map<string, number>();

@@ -25,6 +25,7 @@ import {WaylandSubprocess} from './waylandSubprocess.js';
 import {WindowManager} from './windowManager.js';
 import {PlaybackState} from './playbackState.js';
 import {AutoPause} from './autoPause.js';
+import {migrateSettings} from './settings.js';
 import {HanabiPanelMenu} from './panelMenu.js';
 import {Logger} from './logger.js';
 
@@ -52,6 +53,7 @@ export default class HanabiExtension extends Extension {
 
     // Renderer subprocess and its relaunch timeout.
     private currentProcess: WaylandSubprocess | null = null;
+    private startupTimeoutId = 0;
     private launchRendererTimeoutId = 0;
     private reloadTime = RENDERER_RELOAD_DELAY_MS;
     private rendererSuspended = false;
@@ -71,6 +73,7 @@ export default class HanabiExtension extends Extension {
         this.killAllProcesses();
 
         this.settings = this.getSettings();
+        migrateSettings(this.settings);
         this.playbackState = new PlaybackState();
 
         this.panelMenu = new HanabiPanelMenu(this);
@@ -92,38 +95,76 @@ export default class HanabiExtension extends Extension {
         this.windowManager = new WindowManager();
         this.autoPause = new AutoPause(this);
 
+        // GNOME rebases extension overrides in enable/disable order when
+        // entering the lock screen. Install ours before enable() returns;
+        // delaying them lets them overwrite extensions enabled after us.
+        this.innerEnable();
+    }
+
+    private scheduleInitialRenderer(): void {
+        if (!this.settings || !this.isEnabled)
+            return;
+        if (this.startupTimeoutId)
+            GLib.source_remove(this.startupTimeoutId);
+        this.startupTimeoutId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            this.settings.get_int('startup-delay'),
+            () => {
+                this.startupTimeoutId = 0;
+                if (this.isEnabled && !this.rendererSuspended && !this.currentProcess)
+                    this.launchRenderer();
+                return GLib.SOURCE_REMOVE;
+            }
+        );
+    }
+
+    private syncStaticBackground(): void {
+        const videoPath = this.settings?.get_string('video-path');
+        if (!videoPath)
+            return;
+
+        const stillName = GLib.path_get_basename(videoPath).replace(/\.[^.]+$/, '.png');
+        const still = Gio.File.new_for_path(GLib.build_filenamev([
+            GLib.path_get_dirname(videoPath), '..', 'stills', stillName,
+        ]));
+        if (!still.query_exists(null))
+            return;
+
+        // Panel blur and GNOME's native lock-screen fallback read the static
+        // background, so keep it on the matching frame when videos rotate.
+        const background = Gio.Settings.new('org.gnome.desktop.background');
+        background.delay();
+        background.set_string('picture-uri', still.get_uri());
+        background.set_string('picture-uri-dark', still.get_uri());
+        background.apply();
+    }
+
+    private innerEnable(): void {
+        if (!this.settings || this.isEnabled)
+            return;
+        this.isEnabled = true;
+        logger.debug('Activating overrides');
+        this.shellOverride!.enable();
+        this.windowManager!.enable();
+        this.autoPause!.enable();
+
+        const videoChangedId = this.settings.connect(
+            'changed::video-path', () => this.syncStaticBackground()
+        );
+        this.signalConnections.push([this.settings, videoChangedId]);
+        this.syncStaticBackground();
+
         if (Main.layoutManager._startingUp) {
             const startupCompleteId = Main.layoutManager.connect(
                 'startup-complete',
                 () => {
-                    GLib.timeout_add(
-                        GLib.PRIORITY_DEFAULT,
-                        this.settings!.get_int('startup-delay'),
-                        () => {
-                            this.innerEnable();
-                            return false;
-                        }
-                    );
+                    this.scheduleInitialRenderer();
                 }
             );
             this.signalConnections.push([Main.layoutManager, startupCompleteId]);
         } else {
-            GLib.timeout_add(
-                GLib.PRIORITY_DEFAULT,
-                this.settings.get_int('startup-delay'),
-                () => {
-                    this.innerEnable();
-                    return false;
-                }
-            );
+            this.scheduleInitialRenderer();
         }
-    }
-
-    private innerEnable(): void {
-        logger.debug('Activating overrides and starting renderer');
-        this.shellOverride!.enable();
-        this.windowManager!.enable();
-        this.autoPause!.enable();
 
         const monitorsChangedId = Main.layoutManager.connect(
             'monitors-changed',
@@ -153,12 +194,6 @@ export default class HanabiExtension extends Extension {
             () => this.onSessionModeUpdated()
         );
         this.signalConnections.push([this.settings!, showOnLockScreenChangedId]);
-
-        this.isEnabled = true;
-        if (this.launchRendererTimeoutId)
-            GLib.source_remove(this.launchRendererTimeoutId);
-
-        this.launchRenderer();
     }
 
     private onSessionModeUpdated(): void {
@@ -194,7 +229,7 @@ export default class HanabiExtension extends Extension {
     }
 
     private launchRenderer(): void {
-        if (!this.settings)
+        if (!this.settings || !this.isEnabled || this.rendererSuspended)
             return;
 
         const videoPath = this.settings.get_string('video-path');
@@ -251,6 +286,11 @@ export default class HanabiExtension extends Extension {
     disable(): void {
         logger.debug('Disabling');
 
+        this.isEnabled = false;
+        if (this.startupTimeoutId) {
+            GLib.source_remove(this.startupTimeoutId);
+            this.startupTimeoutId = 0;
+        }
         this.killCurrentProcess();
         this.rendererSuspended = false;
 
@@ -267,8 +307,6 @@ export default class HanabiExtension extends Extension {
             GLib.source_remove(this.monitorsChangedTimeoutId);
             this.monitorsChangedTimeoutId = 0;
         }
-
-        this.isEnabled = false;
     }
 
     private killCurrentProcess(): void {
@@ -316,19 +354,20 @@ export default class HanabiExtension extends Extension {
             if (!processUser.query_exists(null))
                 continue;
 
-            const [binaryData] = processUser.load_bytes(null);
-            let contents = '';
-            const readData = binaryData.get_data();
-            if (readData) {
-                for (let i = 0; i < readData.length; i++) {
-                    if (readData[i] < 32)
-                        contents += ' ';
-                    else
-                        contents += String.fromCharCode(readData[i]);
-                }
+            let readData: Uint8Array | null;
+            try {
+                const [binaryData] = processUser.load_bytes(null);
+                readData = binaryData.get_data();
+            } catch {
+                // Short-lived processes can exit while /proc is being read.
+                continue;
             }
-            const path = `gjs ${GLib.build_filenamev([this.path, 'renderer', 'renderer.js'])}`;
-            if (contents.startsWith(path)) {
+            if (!readData)
+                continue;
+            const argv = new TextDecoder().decode(readData).split('\0');
+            const path = GLib.build_filenamev([this.path, 'renderer', 'renderer.js']);
+            const script = argv[1] === '-m' ? argv[2] : argv[1];
+            if (GLib.path_get_basename(argv[0]) === 'gjs' && script === path) {
                 logger.debug(`Killing orphaned renderer process (pid ${filename})`);
                 const proc = new Gio.Subprocess({argv: ['/bin/kill', filename]});
                 proc.init(null);

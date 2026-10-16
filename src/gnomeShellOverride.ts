@@ -38,10 +38,11 @@ const logger = new Logger('override');
 const BACKGROUND_RELOAD_REFRESH_DELAY_MS = 500;
 
 export class GnomeShellOverride {
-    // Method patching, plus the original get_window_actors captured from our override of it
-    // (the override hides renderer windows, so LiveWallpaper uses this to still find them).
+    // Read directly from Mutter so old Shell overrides cannot hide the renderer
+    // from the wallpaper itself during extension rebases.
     private injectionManager = new InjectionManager();
-    private getAllWindowActors: () => Meta.WindowActor[] = () => global.get_window_actors();
+    private getAllWindowActors = (): Meta.WindowActor[] =>
+        global.compositor.get_window_actors().filter(actor => actor instanceof Meta.WindowActor);
 
     // Live wallpaper actors we've injected.
     private wallpaperActors = new Set<LiveWallpaper>();
@@ -172,7 +173,6 @@ export class GnomeShellOverride {
             Shell.Global.prototype,
             'get_window_actors',
             originalMethod => {
-                thisRef.getAllWindowActors = () => originalMethod.call(global);
                 return function (this: Shell.Global) {
                     return originalMethod.call(this).filter(
                         actor => !actor.meta_window?.title?.includes(APPLICATION_ID)

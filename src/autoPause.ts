@@ -72,6 +72,7 @@ export class AutoPause {
 
 const AutoPauseModule = GObject.registerClass(
     {
+        GTypeName: 'HanabiContinuousAutoPauseModule',
         Signals: {updated: {}},
     },
     class AutoPauseModule extends GObject.Object {
@@ -118,6 +119,7 @@ interface WindowEntry {
 }
 
 const PauseOnMaximizeOrFullscreenModule = GObject.registerClass(
+    {GTypeName: 'HanabiContinuousPauseOnMaximizeOrFullscreenModule'},
     class PauseOnMaximizeOrFullscreenModule extends AutoPauseModule {
         private states: {
             maximizedOrFullscreenOnAnyMonitor: boolean;
@@ -387,6 +389,7 @@ const PauseOnMaximizeOrFullscreenModule = GObject.registerClass(
 // ---------------------------------------------------------------------------
 
 const PauseOnFocusModule = GObject.registerClass(
+    {GTypeName: 'HanabiContinuousPauseOnFocusModule'},
     class PauseOnFocusModule extends AutoPauseModule {
         private states: { windowFocused: boolean };
         private conditions: { pauseOnFocus: boolean };
@@ -492,6 +495,7 @@ const PauseOnBatteryMode = Object.freeze({
 });
 
 const PauseOnBatteryModule = GObject.registerClass(
+    {GTypeName: 'HanabiContinuousPauseOnBatteryModule'},
     class PauseOnBatteryModule extends AutoPauseModule {
         private states: { onBattery: boolean; lowBattery: boolean };
         private conditions: { pauseOnBattery: number; lowBatteryThreshold: number };
@@ -577,6 +581,7 @@ interface MediaPlayerEntry {
 }
 
 const PauseOnMprisPlayingModule = GObject.registerClass(
+    {GTypeName: 'HanabiContinuousPauseOnMprisPlayingModule'},
     class PauseOnMprisPlayingModule extends AutoPauseModule {
         private states: { mprisPlaying: boolean };
         private conditions: { pauseOnMprisPlaying: boolean };

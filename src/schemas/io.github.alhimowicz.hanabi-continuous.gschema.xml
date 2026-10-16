@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-    <schema id="io.github.jeffshee.hanabi-extension" path="/io/github/jeffshee/hanabi-extension/">
+    <schema id="io.github.alhimowicz.hanabi-continuous" path="/io/github/alhimowicz/hanabi-continuous/">
+        <key name="settings-migrated" type="b">
+            <default>false</default>
+            <summary>Original Hanabi preferences have been imported</summary>
+        </key>
         <key name="video-path" type="s">
             <default>''</default>
             <summary>Video Path</summary>

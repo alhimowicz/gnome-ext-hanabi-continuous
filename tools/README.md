@@ -1,19 +1,4 @@
-# tools
+# Lint tooling
 
-Lint tooling borrowed from [gnome-shell-extensions](https://gitlab.gnome.org/GNOME/gnome-shell-extensions/).
-
-## Usage
-
-Run from the project root:
-
-```bash
-npm run lint
-```
-
-Or directly:
-
-```bash
-./tools/run-eslint.sh
-```
-
-Dependencies are installed automatically into `tools/node_modules` on first run.
+Run `npm ci` at the repository root, then `npm run lint`. The wrapper uses the
+root TypeScript ESLint dependencies; it does not install a second toolchain.

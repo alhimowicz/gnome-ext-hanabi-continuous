@@ -5,15 +5,16 @@ project(
   meson_version: '>= 0.56.0'
 )
 
-uuid = 'hanabi-extension@jeffshee.github.io'
+uuid = 'hanabi-continuous@alhimowicz.github.io'
+translation_domain = 'hanabi-extension@jeffshee.github.io'
 
 prefix = get_option('prefix')
 datadir = join_paths(prefix, get_option('datadir'))
 extensions_dir = join_paths(datadir, 'gnome-shell', 'extensions')
 install_dir = join_paths(extensions_dir, uuid)
 
-schema = 'io.github.jeffshee.hanabi-extension'
-schema_dir = join_paths(datadir, 'glib-2.0', 'schemas')
+schema = 'io.github.alhimowicz.hanabi-continuous'
+schema_dir = join_paths(install_dir, 'schemas')
 
 gnome = import('gnome')
 i18n = import('i18n')
