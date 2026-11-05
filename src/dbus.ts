@@ -29,6 +29,17 @@ type DBusSignalProxy = Gio.DBusProxy & {
     disconnectSignal(id: number): void;
 };
 
+type DBusProxyConstructor<T> = new (
+    bus: Gio.DBusConnection, name: string, objectPath: string
+) => T;
+
+function makeProxy<T>(interfaceXml: string | null): DBusProxyConstructor<T> {
+    if (interfaceXml === null)
+        throw new Error('D-Bus interface XML could not be loaded');
+    // GNOME 51 requires construction with new; the build typings still say callable.
+    return Gio.DBusProxy.makeProxyWrapper<T>(interfaceXml) as unknown as DBusProxyConstructor<T>;
+}
+
 interface RendererProxy extends DBusSignalProxy {
     setPlayAsync(): Promise<void>;
     setPauseAsync(): Promise<void>;
@@ -56,8 +67,8 @@ export class RendererWrapper {
                 </signal>
             </interface>
         </node>`;
-        const DBusProxy = Gio.DBusProxy.makeProxyWrapper<RendererProxy>(interfaceXml);
-        return DBusProxy(Gio.DBus.session, APPLICATION_ID, RENDERER_OBJECT_PATH);
+        const DBusProxy = makeProxy<RendererProxy>(interfaceXml);
+        return new DBusProxy(Gio.DBus.session, APPLICATION_ID, RENDERER_OBJECT_PATH);
     }
 
     async setPlay(): Promise<void> {
@@ -95,8 +106,8 @@ export class UPowerWrapper {
         const DBUS_OBJECT_PATH =
             '/org/freedesktop/UPower/devices/DisplayDevice';
         const interfaceXml = DBusUtil.loadInterfaceXML(DBUS_INTERFACE);
-        const DBusProxy = Gio.DBusProxy.makeProxyWrapper<UPowerProxy>(interfaceXml);
-        return DBusProxy(Gio.DBus.system, DBUS_BUS_NAME, DBUS_OBJECT_PATH);
+        const DBusProxy = makeProxy<UPowerProxy>(interfaceXml);
+        return new DBusProxy(Gio.DBus.system, DBUS_BUS_NAME, DBUS_OBJECT_PATH);
     }
 
     getState(): number {
@@ -126,8 +137,8 @@ export class DBusWrapper {
         const DBUS_BUS_NAME = 'org.freedesktop.DBus';
         const DBUS_OBJECT_PATH = '/org/freedesktop/DBus';
         const interfaceXml = DBusUtil.loadInterfaceXML(DBUS_INTERFACE);
-        const DBusProxy = Gio.DBusProxy.makeProxyWrapper<DBusSessionProxy>(interfaceXml);
-        return DBusProxy(Gio.DBus.session, DBUS_BUS_NAME, DBUS_OBJECT_PATH);
+        const DBusProxy = makeProxy<DBusSessionProxy>(interfaceXml);
+        return new DBusProxy(Gio.DBus.session, DBUS_BUS_NAME, DBUS_OBJECT_PATH);
     }
 
     listNames(): string[][] {
@@ -156,8 +167,8 @@ export class MprisWrapper {
         const DBUS_BUS_NAME = mediaPlayerName;
         const DBUS_OBJECT_PATH = '/org/mpris/MediaPlayer2';
         const interfaceXml = DBusUtil.loadInterfaceXML(DBUS_INTERFACE);
-        const DBusProxy = Gio.DBusProxy.makeProxyWrapper<MprisProxy>(interfaceXml);
-        return DBusProxy(Gio.DBus.session, DBUS_BUS_NAME, DBUS_OBJECT_PATH);
+        const DBusProxy = makeProxy<MprisProxy>(interfaceXml);
+        return new DBusProxy(Gio.DBus.session, DBUS_BUS_NAME, DBUS_OBJECT_PATH);
     }
 
     getPlaybackStatus(): string {

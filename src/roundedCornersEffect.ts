@@ -144,9 +144,50 @@ function getFboOffset(actor: Clutter.Actor): [number, number] {
     return [Math.trunc(x1 - box.x1), Math.trunc(y1 - box.y1)];
 }
 
+// Register only the vfuncs supported by the running Shell; GJS rejects unknown ones.
+const ShaderEffect: new () => Clutter.OffscreenEffect & {
+    setUniform(name: string, values: number[]): void;
+} = Shell.GLSLEffect
+    ? GObject.registerClass(
+        {GTypeName: 'HanabiContinuousShaderEffect'},
+        class ShaderEffect extends Shell.GLSLEffect {
+            vfunc_build_pipeline(): void {
+                this.add_glsl_snippet(
+                    Cogl.SnippetHook.FRAGMENT,
+                    fragmentShaderDeclarations,
+                    fragmentShaderCode,
+                    false
+                );
+            }
+
+            setUniform(name: string, values: number[]): void {
+                this.set_uniform_float(this.get_uniform_location(name), values.length, values);
+            }
+        }
+    )
+    : GObject.registerClass(
+        {GTypeName: 'HanabiContinuousShaderEffect'},
+        class ShaderEffect extends Clutter.ShaderEffect {
+            vfunc_get_static_snippet(): Cogl.Snippet {
+                return Cogl.Snippet.new(
+                    Cogl.SnippetHook.FRAGMENT,
+                    fragmentShaderDeclarations,
+                    fragmentShaderCode
+                );
+            }
+
+            setUniform(name: string, values: number[]): void {
+                // GNOME 51's method is absent from the GNOME 50 build typings.
+                (this as unknown as {
+                    set_uniform_float(name: string, components: number, values: number[]): void;
+                }).set_uniform_float(name, values.length, values);
+            }
+        }
+    );
+
 export const RoundedCornersEffect = GObject.registerClass(
     {GTypeName: 'HanabiContinuousRoundedCornersEffect'},
-    class RoundedCornersEffect extends Shell.GLSLEffect {
+    class RoundedCornersEffect extends ShaderEffect {
         // Pending debounced log timers, keyed by label.
         private logTimeouts = new Map<string, number>();
 
@@ -175,15 +216,6 @@ export const RoundedCornersEffect = GObject.registerClass(
                     logger.debug(`${label}:`, ...args);
                     return GLib.SOURCE_REMOVE;
                 })
-            );
-        }
-
-        vfunc_build_pipeline(): void {
-            this.add_glsl_snippet(
-                Cogl.SnippetHook.FRAGMENT,
-                fragmentShaderDeclarations,
-                fragmentShaderCode,
-                false
             );
         }
 
@@ -230,15 +262,10 @@ export const RoundedCornersEffect = GObject.registerClass(
             this.textureOffsetY = offsetY;
             this.debugDebounced('textureMapping', width, height, scale, offsetX, offsetY);
 
-            this.set_uniform_float(
-                this.get_uniform_location('pixel_step'),
-                2,
-                [1.0 / width, 1.0 / height]
-            );
+            this.setUniform('pixel_step', [1.0 / width, 1.0 / height]);
             const [x1, y1, x2, y2] = this.bounds;
-            this.set_uniform_float(
-                this.get_uniform_location('bounds'),
-                4,
+            this.setUniform(
+                'bounds',
                 [
                     (x1 - offsetX) * scale,
                     (y1 - offsetY) * scale,
@@ -246,16 +273,8 @@ export const RoundedCornersEffect = GObject.registerClass(
                     (y2 - offsetY) * scale,
                 ]
             );
-            this.set_uniform_float(
-                this.get_uniform_location('clip_radius'),
-                1,
-                [this.clipRadius * scale]
-            );
-            this.set_uniform_float(
-                this.get_uniform_location('border_stroke'),
-                1,
-                [this.borderStroke * scale]
-            );
+            this.setUniform('clip_radius', [this.clipRadius * scale]);
+            this.setUniform('border_stroke', [this.borderStroke * scale]);
         }
 
         setBounds(bounds: number[]): void {
@@ -278,11 +297,7 @@ export const RoundedCornersEffect = GObject.registerClass(
 
         setBorderColor(color: number[]): void {
             this.debugDebounced('borderColor', ...color);
-            this.set_uniform_float(
-                this.get_uniform_location('border_color'),
-                4,
-                color
-            );
+            this.setUniform('border_color', color);
         }
     }
 );

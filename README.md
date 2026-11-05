@@ -1,6 +1,6 @@
 # Hanabi Continuous
 
-Animated video wallpapers for **GNOME 50 on Wayland**, maintained as an independent
+Animated video wallpapers for **GNOME 50 and 51 on Wayland**, maintained as an independent
 fork of [Jeff Shee's Hanabi](https://github.com/jeffshee/gnome-ext-hanabi).
 
 This fork fixes wallpaper rotation that stalled during paused playback, renderer
@@ -77,6 +77,10 @@ migration, renderer timeouts, stale health-check responses, and forced process
 termination. GJS checks use temporary fixtures and the in-memory settings backend;
 they do not change desktop settings. The small WebM fixture is generated from
 GStreamer's `videotestsrc` ball pattern.
+
+Compatibility checks cover both shader APIs, scaled wallpaper clipping, and D-Bus
+proxy construction. GNOME 50 uses `Shell.GLSLEffect`; GNOME 51 uses
+`Clutter.ShaderEffect`, with the same rounded corners and border settings.
 
 ## Updating and rollback
 

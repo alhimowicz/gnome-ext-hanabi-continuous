@@ -1,11 +1,12 @@
 {
-  "description": "Continuous animated wallpapers for GNOME 50. A Hanabi fork with reliable rotation, renderer discovery, and extension lifecycle fixes.",
+  "description": "Continuous animated wallpapers for GNOME 50 and 51. A Hanabi fork with reliable rotation, renderer discovery, and extension lifecycle fixes.",
   "gettext-domain": "@translation_domain@",
   "name": "Hanabi Continuous",
   "settings-schema": "@settings_schema@",
   "session-modes": ["user", "unlock-dialog"],
   "shell-version": [
-    "50"
+    "50",
+    "51"
   ],
   "url": "https://github.com/alhimowicz/gnome-ext-hanabi-continuous",
   "uuid": "@uuid@",
